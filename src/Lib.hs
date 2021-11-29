@@ -1,139 +1,153 @@
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NoImplicitPrelude     #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE QuasiQuotes           #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE NoImplicitPrelude          #-}
+{-# LANGUAGE OverloadedLabels           #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE QuasiQuotes                #-}
+{-# LANGUAGE RankNTypes                 #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE ViewPatterns               #-}
 
 module Lib
   ( runApp
   ) where
 
-import           Relude
-
-import           Database.Selda            (Query, Relational, Row, SeldaT,
-                                            SqlRow, Table, fromSql, query,
-                                            table, tryCreateTable, from, (!))
-import qualified Database.Selda            as Selda (insert, select)
-import           Database.Selda.Backend    (SeldaBackend, SeldaConnection,
-                                            runSeldaT)
-import           Database.Selda.Migrations as Migrations
-import           Database.Selda.SQLite     as SQLite
-import           Inputs
+import qualified DB                     (setup)
+import qualified DB.PuzzleInput         as PuzzleInput (Row (..), content,
+                                                        table)
+import           Database.Selda         (Query, Relational, Row, SeldaT, SqlRow,
+                                         Table, from, fromSql, query, table,
+                                         tryCreateTable, (!))
+import qualified Database.Selda         as Form
+import qualified Database.Selda         as Selda (insert, select)
+import           Database.Selda.Backend (SeldaBackend, SeldaConnection,
+                                         runSeldaT)
+import           Database.Selda.SQLite  as SQLite
 import           Layout
+import           Relude
 import           Yesod
+import           Yesod.Form
 import           Yesod.Static
 
 data App =
   App
     { appStatic :: Static
-    , getInputs :: Inputs
     , runQuery  :: forall a. SeldaT SQLite IO a -> IO a
     }
+
+instance RenderMessage App FormMessage where
+  renderMessage _ _ = defaultFormMessage
 
 -- Derive routes and instances for App.
 mkYesod
   "App"
   [parseRoutes|
 / HomeR GET
-/inputs InputsR Inputs getInputs
+/day/#DayID DayR GET POST
 /static StaticR Static appStatic
 |]
 
 instance Yesod App
 
--- The handler for the GET request at /, corresponds to HomeRoute.
+newtype DayID =
+  DayID Int
+  deriving (Eq, Show, Read, PathPiece)
+
+data PuzzleInputFields =
+  PuzzleInputFields
+    { day     :: Int
+    , slug    :: Text
+    , content :: Text
+    }
+  deriving (Show)
+
 getHomeR :: HandlerFor App Html
 getHomeR = do
   app <- getYesod
-  result <- liftIO $ runQuery app $ query $ do 
-    inputs <- #content `from` Selda.select puzzleInputTable
-    pure $ inputs
+  result <-
+    liftIO $
+    runQuery app $
+    query $ do
+      inputs <- Selda.select PuzzleInput.table
+      pure inputs
   defaultLayout $
     layout
       [hamlet|
-          <div>Hello there
+        <div>Hello there
+          <div>
+            $forall row <- result
+              <h3>#{PuzzleInput.content row}
         |] $
     toWidget
       [cassius|
           |]
 
-doStuff :: SeldaT SQLite IO ()
-doStuff = do
-  pure ()
+postDayR :: DayID -> HandlerFor App Html
+postDayR (DayID day) = do
+  app <- getYesod
+  slug' <- lookupPostParam "slug"
+  content' <- lookupPostParam "content"
+  result <-
+    case PuzzleInputFields day <$> slug' <*> content' of
+      Just form ->
+        liftIO $
+        runQuery app $ do
+          let row = PuzzleInput.Row day (slug form) (content form)
+          Selda.insert PuzzleInput.table [row]
+          pure
+            [hamlet|
+              <div>Everything looks good here chief!
+            |]
+      Nothing ->
+        pure
+          [hamlet|
+            <div>There was an erorr submitting stuff!
+          |]
+  defaultLayout $ layout result $ toWidget [lucius||]
 
-c :: IO ()
-c = do
-  con <- sqliteOpen "data.db"
-  stuff <- runSeldaT doStuff con
-  pure ()
-
-b :: IO (SeldaConnection SQLite)
-b = sqliteOpen "data.db"
+getDayR :: DayID -> HandlerFor App Html
+getDayR (DayID day) = do
+  app <- getYesod
+  slug' <- lookupPostParam "slug"
+  content' <- lookupPostParam "content"
+  let submittedForm = PuzzleInputFields day <$> slug' <*> content'
+  _ <-
+    case submittedForm of
+      Just form ->
+        liftIO $
+        runQuery app $ do
+          let row = PuzzleInput.Row day (slug form) (content form)
+          Selda.insert PuzzleInput.table [row]
+          pure ()
+      _ -> pure ()
+  defaultLayout $
+    layout
+      [hamlet|
+          <div>Day page with inputs #{day}
+            <form action="/day/#{day}" method="POST">
+              <input id="day" name="day" value="#{day}" >
+              <label for="slug">Slug
+              <input id="slug" name="slug" type="text">
+              <br>
+              <label for="content">Content
+              <textarea id="content" name="content">
+              <br>
+              <button type="submit">Submit
+        |] $
+    toWidget
+      [lucius|
+          #day {
+            display: none;
+          }
+        |]
 
 runApp :: IO ()
 runApp = do
   staticFiles <- static "static"
   con <- sqliteOpen "data.db"
-  liftIO $
-    warp
-      3000
-      App
-        { appStatic = staticFiles
-        , getInputs = Inputs
-        , runQuery = (`runSeldaT` con)
-        }
-
-data EmptyRow =
-  EmptyRow
-    { day'     :: Int
-    , content' :: ByteString
-    }
-  deriving (Generic)
-
-instance SqlRow EmptyRow
-
-emptyTable :: Table EmptyRow
-emptyTable = table "puzzle_input" []
-
-{-
-Day Slug Blob
--}
-data PuzzleInput =
-  PuzzleInput
-    { day     :: Int
-    , content :: ByteString
-    , slug    :: Text
-    }
-  deriving (Generic)
-
-instance SqlRow PuzzleInput
-
-puzzleInputTable :: Table PuzzleInput
-puzzleInputTable = table "puzzle_input" []
-
--- type MigrationStep backend = [Migration backend]
--- Migration :: (Relational a, Relational b) => Table a -> Table b -> (Row backend a -> Query backend (Row backend b)) -> Migration backend
--- select :: Relational a => Table a -> Query s (Row s a)
-type SQLBackend = (SeldaBackend SQLite)
-
--- a :: Migration (SeldaBackend SQLite)
--- a :: (Relational a, Relational b)
---   => Table a
---   -> Table b
---   -> (Row backend a -> Query backend (Row backend b))
---   -> Migration backend
--- a tableA tableB row =
---   select tableB
-a :: Migration backend
-a =
-  Migration
-    emptyTable
-    puzzleInputTable
-    (\emptyRow -> Selda.select puzzleInputTable)
--- select :: Relational a => Table a -> Query s (Row s a)
+  _ <- runSeldaT DB.setup con
+  liftIO $ warp 3000 App {appStatic = staticFiles, runQuery = (`runSeldaT` con)}
