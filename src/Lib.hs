@@ -1,6 +1,4 @@
 {-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE NoImplicitPrelude          #-}
@@ -19,18 +17,21 @@ module Lib
 import qualified DB                     (setup)
 import qualified DB.PuzzleInput         as PuzzleInput (Row (..), content,
                                                         table)
-import           Database.Selda         (Query, Relational, Row, SeldaT, SqlRow,
-                                         Table, from, fromSql, query, table,
-                                         tryCreateTable, (!))
-import qualified Database.Selda         as Form
-import qualified Database.Selda         as Selda (insert, select)
-import           Database.Selda.Backend (SeldaBackend, SeldaConnection,
-                                         runSeldaT)
+import           Database.Selda         (Col (..), Query, Relational, Row,
+                                         SeldaT, SqlRow, SqlType (mkLit), Table,
+                                         from, fromSql, tryCreateTable, (!),
+                                         (.==))
+import qualified Database.Selda         as Selda (Col (..), SqlType, insert,
+                                                  int, query, restrict, select)
+import           Database.Selda.Backend (Lit (LInt), SeldaBackend,
+                                         SeldaConnection, runSeldaT)
 import           Database.Selda.SQLite  as SQLite
-import           Layout
+import qualified Form.PuzzleInput       as PuzzleInputForm (content, day, form,
+                                                            slug)
+import           Layout                 (layout)
 import           Relude
 import           Yesod
-import           Yesod.Form
+import           Yesod.Form             as Form
 import           Yesod.Static
 
 data App =
@@ -42,7 +43,6 @@ data App =
 instance RenderMessage App FormMessage where
   renderMessage _ _ = defaultFormMessage
 
--- Derive routes and instances for App.
 mkYesod
   "App"
   [parseRoutes|
@@ -57,93 +57,84 @@ newtype DayID =
   DayID Int
   deriving (Eq, Show, Read, PathPiece)
 
-data PuzzleInputFields =
-  PuzzleInputFields
-    { day     :: Int
-    , slug    :: Text
-    , content :: Text
-    }
-  deriving (Show)
-
 getHomeR :: HandlerFor App Html
 getHomeR = do
   app <- getYesod
-  result <-
-    liftIO $
-    runQuery app $
-    query $ do
-      inputs <- Selda.select PuzzleInput.table
-      pure inputs
-  defaultLayout $
-    layout
-      [hamlet|
-        <div>Hello there
-          <div>
-            $forall row <- result
-              <h3>#{PuzzleInput.content row}
-        |] $
-    toWidget
-      [cassius|
-          |]
+  layout $ do
+    [whamlet|
+      <div>Select a day
+    |]
 
 postDayR :: DayID -> HandlerFor App Html
 postDayR (DayID day) = do
   app <- getYesod
-  slug' <- lookupPostParam "slug"
-  content' <- lookupPostParam "content"
-  result <-
-    case PuzzleInputFields day <$> slug' <*> content' of
-      Just form ->
+  ((result, widget), enctype) <- runFormPost $ PuzzleInputForm.form day
+  case result of
+    FormSuccess puzzleInput -> do
+      _ <-
         liftIO $
         runQuery app $ do
-          let row = PuzzleInput.Row day (slug form) (content form)
-          Selda.insert PuzzleInput.table [row]
-          pure
-            [hamlet|
-              <div>Everything looks good here chief!
-            |]
-      Nothing ->
-        pure
-          [hamlet|
-            <div>There was an erorr submitting stuff!
-          |]
-  defaultLayout $ layout result $ toWidget [lucius||]
+          Selda.insert PuzzleInput.table []
+          pure ()
+      layout
+        [whamlet|
+          <div>
+            <a href="/day/#{day}">Back to day #{day} page
+        |]
+    _ -> do
+      layout
+        [whamlet|
+          <div>There was an error submitting the form
+          <form action="/day/#{day}" enctype=#{enctype} method="POST">
+            ^{widget}
+            <button type="submit">Add Puzzle Input
+        |]
 
 getDayR :: DayID -> HandlerFor App Html
 getDayR (DayID day) = do
   app <- getYesod
-  slug' <- lookupPostParam "slug"
-  content' <- lookupPostParam "content"
-  let submittedForm = PuzzleInputFields day <$> slug' <*> content'
-  _ <-
-    case submittedForm of
-      Just form ->
-        liftIO $
-        runQuery app $ do
-          let row = PuzzleInput.Row day (slug form) (content form)
-          Selda.insert PuzzleInput.table [row]
-          pure ()
-      _ -> pure ()
-  defaultLayout $
-    layout
-      [hamlet|
-          <div>Day page with inputs #{day}
-            <form action="/day/#{day}" method="POST">
-              <input id="day" name="day" value="#{day}" >
-              <label for="slug">Slug
-              <input id="slug" name="slug" type="text">
-              <br>
-              <label for="content">Content
-              <textarea id="content" name="content">
-              <br>
-              <button type="submit">Submit
-        |] $
+  (widget, enctype) <- generateFormPost $ PuzzleInputForm.form day
+  inputs <-
+    liftIO $
+    runQuery app $
+    Selda.query $ do
+      res <- Selda.select PuzzleInput.table
+      Selda.restrict (res ! #day .== Selda.int day)
+      pure res
+  layout $ do
+    [whamlet|
+      <div>Day page with inputs #{day}
+        <div class="puzzle-inputs">
+        $forall input <- inputs
+          <div>
+            <input class="hidden" type="checkbox" id="#{PuzzleInput.slug input}" name="#{PuzzleInput.slug input}">
+            <label for="#{PuzzleInput.slug input}" class="puzzle-input">
+              <span class="puzzle-input__checkbox puzzle-input__checkbox--checked">
+              <span class="puzzle-input__label">#{PuzzleInput.slug input}
+        <form action="/day/#{day}" enctype=#{enctype} method="POST">
+          ^{widget}
+          <button type="submit">Add Puzzle Input
+    |]
     toWidget
       [lucius|
-          #day {
-            display: none;
-          }
-        |]
+        .puzzle-inputs {
+
+        }
+        .puzzle-input {
+          display: flex;
+        }
+        .puzzle-input__checkbox {
+          height: 24px;
+          width: 24px;
+          border: 1px solid var(--keyword-green);
+        }
+        .puzzle-input__checkbox--checked {
+          margin: 4px;
+          width: 100%;
+          height: 100%;
+          background-color: var(--active-green);
+        }
+      |]
 
 runApp :: IO ()
 runApp = do
