@@ -31,12 +31,15 @@ library
       Form.PuzzleInput
       Layout
       Lib
+      Solutions.Day1
+      Solutions.Evaluate
   other-modules:
       Paths_advent_of_code
   hs-source-dirs:
       src
   build-depends:
       base >=4.7 && <5
+    , parsec
     , relude
     , selda
     , selda-sqlite
@@ -55,6 +58,7 @@ executable advent-of-code-exe
   build-depends:
       advent-of-code
     , base >=4.7 && <5
+    , parsec
     , relude
     , selda
     , selda-sqlite
@@ -74,6 +78,7 @@ test-suite advent-of-code-test
   build-depends:
       advent-of-code
     , base >=4.7 && <5
+    , parsec
     , relude
     , selda
     , selda-sqlite

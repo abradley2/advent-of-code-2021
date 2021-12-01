@@ -32,6 +32,7 @@ import qualified Form.PuzzleInput       as PuzzleInputForm (content, day, form,
                                                             slug)
 import           Layout                 (layout)
 import           Relude
+import qualified Solutions.Day1         as Day1 (solvePartOne, solvePartTwo)
 import           Yesod
 import           Yesod.Form             as Form
 import           Yesod.Static
@@ -84,11 +85,7 @@ postDayR (DayID day) = do
                 (PuzzleInputForm.slug puzzleInput)
             ]
           pure ()
-      layout
-        [whamlet|
-          <div>
-            <a href="/day/#{day}">Back to day #{day} page
-        |]
+      redirect ("/day/#{day}" :: Text)
     _ -> do
       layout
         [whamlet|
@@ -102,6 +99,10 @@ getDayR :: DayID -> HandlerFor App Html
 getDayR (DayID day) = do
   app <- getYesod
   (widget, enctype) <- generateFormPost $ PuzzleInputForm.form day
+  solution <-
+    case day of
+      1 -> liftIO Day1.solvePartTwo
+      _ -> pure ""
   inputs <-
     liftIO $
     runQuery app $
@@ -113,6 +114,7 @@ getDayR (DayID day) = do
     [whamlet|
       <div>Day
         <b>#{day}
+        <h3>#{solution}
         <div class="encouragement">
           <div class="encouragement__title">Daily encouragement:
           <div class="encouragement__message">You look nice today

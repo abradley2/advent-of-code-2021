@@ -27,6 +27,7 @@ dependencies:
 - yesod-form
 - selda
 - selda-sqlite
+- parsec
 
 library:
   source-dirs: src
