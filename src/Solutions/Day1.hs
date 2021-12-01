@@ -30,10 +30,12 @@ solvePartTwo (a:b:c:d:rest) =
     else 0
 solvePartTwo _ = 0
 
+evaluatePartOne :: IO (Text, Text)
 evaluatePartOne =
   (, "Part One") <$>
   evaluate parseInput "src/Solutions/Day1/input.txt" solvePartOne
 
+evaluatePartTwo :: IO (Text, Text)
 evaluatePartTwo =
   (, "Part Two") <$>
   evaluate parseInput "src/Solutions/Day1/input.txt" solvePartTwo

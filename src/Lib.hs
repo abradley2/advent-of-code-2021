@@ -18,6 +18,14 @@ import qualified Solutions.Day1 as Day1 (evaluatePartOne, evaluatePartTwo)
 import           Yesod
 import           Yesod.Static
 
+getSolutions :: MonadIO m => Int -> m [(Text, Text)]
+getSolutions day =
+  mapM
+    liftIO
+    (case day of
+       1 -> [Day1.evaluatePartOne, Day1.evaluatePartTwo]
+       _ -> [pure ("", "No Answers")])
+
 data App =
   App
     { appStatic :: Static
@@ -48,10 +56,7 @@ getHomeR = do
 getDayR :: DayID -> HandlerFor App Html
 getDayR (DayID day) = do
   app <- getYesod
-  solutions <-
-    case day of
-      1 -> sequence $ liftIO <$> [Day1.evaluatePartOne, Day1.evaluatePartTwo]
-      _ -> pure []
+  solutions <- getSolutions day
   layout $ do
     [whamlet|
       <div>Day <b>#{day}
