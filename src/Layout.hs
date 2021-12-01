@@ -115,7 +115,7 @@ formStyleWidget =
     }
     input, textarea {
       border: 1px solid var(--keyword-green);
-      background-color: transparent;
+      background-color: var(----background-black);
       padding: 4px;
       color: var(--text-gray);
       font-family: Clacon;

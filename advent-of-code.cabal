@@ -27,6 +27,7 @@ library
   exposed-modules:
       DB
       DB.PuzzleInput
+      Form.CheckboxGroup
       Form.PuzzleInput
       Layout
       Lib

@@ -17,6 +17,7 @@ module Lib
 import qualified DB                     (setup)
 import qualified DB.PuzzleInput         as PuzzleInput (Row (..), content,
                                                         table)
+import           Data.List              (length)
 import           Database.Selda         (Col (..), Query, Relational, Row,
                                          SeldaT, SqlRow, SqlType (mkLit), Table,
                                          from, fromSql, tryCreateTable, (!),
@@ -26,6 +27,7 @@ import qualified Database.Selda         as Selda (Col (..), SqlType, insert,
 import           Database.Selda.Backend (Lit (LInt), SeldaBackend,
                                          SeldaConnection, runSeldaT)
 import           Database.Selda.SQLite  as SQLite
+import           Form.CheckboxGroup     (initCheckboxes)
 import qualified Form.PuzzleInput       as PuzzleInputForm (content, day, form,
                                                             slug)
 import           Layout                 (layout)
@@ -74,7 +76,13 @@ postDayR (DayID day) = do
       _ <-
         liftIO $
         runQuery app $ do
-          Selda.insert PuzzleInput.table []
+          Selda.insert
+            PuzzleInput.table
+            [ PuzzleInput.Row
+                (PuzzleInputForm.day puzzleInput)
+                (unTextarea $ PuzzleInputForm.content puzzleInput)
+                (PuzzleInputForm.slug puzzleInput)
+            ]
           pure ()
       layout
         [whamlet|
@@ -103,36 +111,94 @@ getDayR (DayID day) = do
       pure res
   layout $ do
     [whamlet|
-      <div>Day page with inputs #{day}
+      <div>Day
+        <b>#{day}
+        <div class="encouragement">
+          <div class="encouragement__title">Daily encouragement:
+          <div class="encouragement__message">You look nice today
         <div class="puzzle-inputs">
-        $forall input <- inputs
-          <div>
-            <input class="hidden" type="checkbox" id="#{PuzzleInput.slug input}" name="#{PuzzleInput.slug input}">
-            <label for="#{PuzzleInput.slug input}" class="puzzle-input">
-              <span class="puzzle-input__checkbox puzzle-input__checkbox--checked">
-              <span class="puzzle-input__label">#{PuzzleInput.slug input}
+          $if length inputs == 0
+            <div class="no-inputs-available">No inputs available
+          $forall input <- inputs
+            <form class="checkbox-group" action="/day/#{day}" method="DELETE">
+              <input class="hidden" type="text" name="slug" value="#{PuzzleInput.slug input}">
+              <input class="hidden" type="radio" id="#{PuzzleInput.slug input}" name="slug" value="#{PuzzleInput.slug input}">
+              <label for="#{PuzzleInput.slug input}" tabindex="0">
+                <span class="checkbox-group__checkbox">
+                <span class="checkbox-group__label">
+                  <span>#{PuzzleInput.slug input}
+          <div class="footer">
+            $if length inputs /= 0
+              <button class="eval-button">Evaluate (Part One)
+              <button class="eval-button">Evaluate (Part Two)
         <form action="/day/#{day}" enctype=#{enctype} method="POST">
           ^{widget}
           <button type="submit">Add Puzzle Input
     |]
-    toWidget
+    initCheckboxes ".puzzle-inputs"
+    toWidgetHead
       [lucius|
+        .encouragement {
+          max-width: 240px;
+          margin: 16px 0px;
+          border: 1px dashed var(--text-gray);
+          padding: 8px;
+          background-color: var(--background-black);
+        }
+        .encouragement__title {
+          color: var(--active-green);
+          margin-bottom: 8px;
+          font-size: 16px;
+        }
+        .encouragement__message {
+          font-size: 14px;
+        }
+        .footer {
+        }
+        .eval-button {
+          margin-top: 16px;
+          margin-right: 16px;
+        }
+        .no-inputs-available {
+        }
         .puzzle-inputs {
-
+          margin: 32px 0px;
         }
-        .puzzle-input {
-          display: flex;
+        .checkbox-group > label {
+          display: inline-flex;
+          cursor: pointer;
+          margin: 8px 0px;
+          border: 1px solid transparent;
+          align-items: center;
         }
-        .puzzle-input__checkbox {
+        .checkbox-group > label:hover, .checkbox-group > label:focus {
+          outline: 1px solid var(--active-green);
+          outline-offset: 2px;
+        }
+        .checkbox-group__label {
+          display: inline-block;
+          line-height: 16px;
+          font-size: 16px;
+          color: var(--keyword-green);
+          padding-left: 8px;
+          max-width: 200px;
+        }
+        .checkbox-group__checkbox {
+          box-sizing: border-box;
           height: 24px;
           width: 24px;
+          padding: 6px;
           border: 1px solid var(--keyword-green);
+          display: block;
+          flex-grow: 0;
+          flex-shrink: 0;
         }
-        .puzzle-input__checkbox--checked {
-          margin: 4px;
+        .checkbox__checkmark {
+          display: block;
           width: 100%;
           height: 100%;
           background-color: var(--active-green);
+          box-shadow: var(--shadow-glow);
         }
       |]
 
