@@ -24,9 +24,6 @@ dependencies:
 - relude
 - yesod
 - yesod-static
-- yesod-form
-- selda
-- selda-sqlite
 - parsec
 
 library:

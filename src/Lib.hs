@@ -62,7 +62,7 @@ getDayR (DayID day) = do
       <div>Day <b>#{day}
       $forall (answer, label) <- solutions
         <div class="label-answer-group">
-          <h3 class="label">#{label}
+          <div class="label">#{label}
           <span class="answer">#{answer}
     |]
     toWidget
