@@ -91,7 +91,6 @@ layout widget = do
           display: none;
         }
     |]
-    toWidgetHead formStyleWidget
     toWidgetHead (pageHead pageContent)
     [whamlet|
         <div .layout>
@@ -104,44 +103,3 @@ layout widget = do
             <div .layout__body>
               ^{pageBody pageContent}
     |]
-
-formStyleWidget =
-  [lucius|
-    form > div {
-      margin: 16px 0px;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-    }
-    input, textarea {
-      border: 1px solid var(--keyword-green);
-      background-color: var(----background-black);
-      padding: 4px;
-      color: var(--text-gray);
-      font-family: Clacon;
-    }
-    input:focus, input:hover, textarea:focus, textarea:hover {
-      outline: none;
-      box-shadow: var(--shadow-glow);
-    }
-    button[type="submit"] {
-      margin: 16px 0px;
-    }
-
-    button {
-      background-color: transparent;
-      border: 1px solid var(--keyword-green);
-      color: var(--keyword-green);
-      text-transform: uppercase;
-      padding: 4px;
-    }
-    button::before {
-      content: "[ ";
-    }
-    button::after {
-      content: " ]";
-    }
-    button:hover, button:focus {
-      box-shadow: var(--shadow-glow);
-    }
-  |]

@@ -4,8 +4,5 @@ let
 in
     pkgs.mkShell 
         { buildInputs = 
-            [ pkgs.gcc
-              pkgs.zlib
-              pkgs.sqlite
-            ];
+            [];
         }

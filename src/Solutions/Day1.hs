@@ -1,15 +1,15 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections     #-}
 
 module Solutions.Day1 where
 
 import           Relude
-import           Solutions.Evaluate     (evaluate)
+import           Solutions.Evaluate (evaluate)
 import           Text.Parsec
-import qualified Text.Parsec            as P ((<|>))
-import           Text.Parsec.Combinator
-import           Text.Parsec.Text       (Parser)
-import           Text.Read              (readMaybe)
+import qualified Text.Parsec        as P ((<|>))
+import           Text.Parsec.Text   (Parser)
+import           Text.Read          (readMaybe)
 
 solvePartOne :: Ord a => [a] -> Int
 solvePartOne (cur:(next:others)) =
@@ -31,9 +31,11 @@ solvePartTwo (a:b:c:d:rest) =
 solvePartTwo _ = 0
 
 evaluatePartOne =
+  (, "Part One") <$>
   evaluate parseInput "src/Solutions/Day1/part_1.txt" solvePartOne
 
 evaluatePartTwo =
+  (, "Part Two") <$>
   evaluate parseInput "src/Solutions/Day1/part_1.txt" solvePartTwo
 
 parseInput :: Parser [Int]

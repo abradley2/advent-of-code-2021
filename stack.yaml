@@ -71,8 +71,4 @@ extra-deps:
 
 nix:
   enable: true
-  packages: [
-    gcc
-    zlib
-    sqlite
-  ]
+  packages: []
