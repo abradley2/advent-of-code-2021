@@ -32,11 +32,11 @@ solvePartTwo _ = 0
 
 evaluatePartOne =
   (, "Part One") <$>
-  evaluate parseInput "src/Solutions/Day1/part_1.txt" solvePartOne
+  evaluate parseInput "src/Solutions/Day1/input.txt" solvePartOne
 
 evaluatePartTwo =
   (, "Part Two") <$>
-  evaluate parseInput "src/Solutions/Day1/part_1.txt" solvePartTwo
+  evaluate parseInput "src/Solutions/Day1/input.txt" solvePartTwo
 
 parseInput :: Parser [Int]
 parseInput = do
