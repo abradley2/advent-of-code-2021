@@ -17,12 +17,23 @@ data Position =
   Position
     { depth    :: Int
     , distance :: Int
+    , aim      :: Int
     }
 
 data Instruction
   = Forward Int
   | Upward Int
   | Downward Int
+
+solvePartTwo :: [Instruction] -> Position -> Int
+solvePartTwo (instruction:nextInstructions) pos =
+  solvePartTwo nextInstructions $
+  case instruction of
+    Downward val -> pos {aim = aim pos + val}
+    Upward val -> pos {aim = aim pos - val}
+    Forward val ->
+      pos {distance = distance pos + val, depth = depth pos + (aim pos * val)}
+solvePartTwo [] pos = depth pos * distance pos
 
 solvePartOne :: [Instruction] -> Position -> Int
 solvePartOne (instruction:nextInstructions) pos =
@@ -39,15 +50,31 @@ evaluateSampleInput =
   evaluate
     inputParser
     "src/Solutions/Day2/sample_input.txt"
-    (\ins -> solvePartOne ins (Position 0 0))
+    (\ins -> solvePartOne ins (Position 0 0 0))
 
 evaluatePartOne :: IO (Text, Text)
 evaluatePartOne =
-  (, "Part One Sample") <$>
+  (, "Part One") <$>
   evaluate
     inputParser
     "src/Solutions/Day2/input.txt"
-    (\ins -> solvePartOne ins (Position 0 0))
+    (\ins -> solvePartOne ins (Position 0 0 0))
+
+evaluatePartTwoSample :: IO (Text, Text)
+evaluatePartTwoSample =
+  (, "Part Two Sample") <$>
+  evaluate
+    inputParser
+    "src/Solutions/Day2/sample_input.txt"
+    (\ins -> solvePartTwo ins (Position 0 0 0))
+
+evaluatePartTwo :: IO (Text, Text)
+evaluatePartTwo =
+  (, "Part Two") <$>
+  evaluate
+    inputParser
+    "src/Solutions/Day2/input.txt"
+    (\ins -> solvePartTwo ins (Position 0 0 0))
 
 inputParser :: Parser [Instruction]
 inputParser = do
