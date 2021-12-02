@@ -5,7 +5,7 @@
 module Solutions.Day1 where
 
 import           Relude
-import           Solutions.Evaluate (evaluate)
+import           Solutions.Evaluate (Label (..), Solution, evaluate)
 import           Text.Parsec
 import qualified Text.Parsec        as P ((<|>))
 import           Text.Parsec.Text   (Parser)
@@ -30,15 +30,15 @@ solvePartTwo (a:b:c:d:rest) =
     else 0
 solvePartTwo _ = 0
 
-evaluatePartOne :: IO (Text, Text)
-evaluatePartOne =
-  (, "Part One") <$>
-  evaluate parseInput "src/Solutions/Day1/input.txt" solvePartOne
+partOne = evaluate parseInput solvePartOne
 
-evaluatePartTwo :: IO (Text, Text)
-evaluatePartTwo =
-  (, "Part Two") <$>
-  evaluate parseInput "src/Solutions/Day1/input.txt" solvePartTwo
+partOneSolution :: Solution
+partOneSolution = partOne (Label "Part One") "src/Solutions/Day1/input.txt"
+
+partTwo = evaluate parseInput solvePartTwo
+
+partTwoSolution :: Solution
+partTwoSolution = partTwo (Label "Part Two") "src/Solutions/Day1/input.txt"
 
 parseInput :: Parser [Int]
 parseInput = do

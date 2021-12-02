@@ -12,28 +12,21 @@ module Lib
   ( runApp
   ) where
 
-import           Layout         (layout)
+import           Layout             (layout)
 import           Relude
-import qualified Solutions.Day1 as Day1 (evaluatePartOne, evaluatePartTwo)
-import qualified Solutions.Day2 as Day2 (evaluatePartOne, evaluatePartTwo,
-                                         evaluatePartTwoSample,
-                                         evaluateSampleInput)
+import           Solutions.Day1     as Day1
+import           Solutions.Day2     as Day2
+import           Solutions.Evaluate (Solution)
 import           Yesod
 import           Yesod.Static
 
-getSolutions :: MonadIO m => Int -> m [(Text, Text)]
 getSolutions day =
   mapM
     liftIO
     (case day of
-       1 -> [Day1.evaluatePartOne, Day1.evaluatePartTwo]
-       2 ->
-         [ Day2.evaluateSampleInput
-         , Day2.evaluatePartOne
-         , Day2.evaluatePartTwoSample
-         , Day2.evaluatePartTwo
-         ]
-       _ -> [pure ("", "No Answers")])
+       1 -> [Day1.partOneSolution, Day1.partTwoSolution]
+       2 -> [Day2.partOneSolution, Day2.partTwoSolution]
+       _ -> [])
 
 data App =
   App

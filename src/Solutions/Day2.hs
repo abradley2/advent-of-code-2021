@@ -6,7 +6,7 @@
 module Solutions.Day2 where
 
 import           Relude
-import           Solutions.Evaluate     (evaluate)
+import           Solutions.Evaluate     (Label (..), Solution, evaluate)
 import           Text.Parsec            as P (char, newline, noneOf, parse,
                                               (<|>))
 import           Text.Parsec.Combinator
@@ -44,37 +44,23 @@ solvePartOne (instruction:nextInstructions) pos =
     Downward val -> pos {depth = depth pos + val}
 solvePartOne [] pos = depth pos * distance pos
 
-evaluateSampleInput :: IO (Text, Text)
-evaluateSampleInput =
-  (, "Part One Sample") <$>
-  evaluate
-    inputParser
-    "src/Solutions/Day2/sample_input.txt"
-    (\ins -> solvePartOne ins (Position 0 0 0))
+partOne = evaluate inputParser (`solvePartOne` Position 0 0 0)
 
-evaluatePartOne :: IO (Text, Text)
-evaluatePartOne =
-  (, "Part One") <$>
-  evaluate
-    inputParser
-    "src/Solutions/Day2/input.txt"
-    (\ins -> solvePartOne ins (Position 0 0 0))
+partOneSampleSolution :: Solution
+partOneSampleSolution =
+  partOne (Label "Part One Sample Input") "src/Solutions/Day2/sample_input.txt"
 
-evaluatePartTwoSample :: IO (Text, Text)
-evaluatePartTwoSample =
-  (, "Part Two Sample") <$>
-  evaluate
-    inputParser
-    "src/Solutions/Day2/sample_input.txt"
-    (\ins -> solvePartTwo ins (Position 0 0 0))
+partOneSolution :: Solution
+partOneSolution = partOne (Label "Part One") "src/Solutions/Day2/input.txt"
 
-evaluatePartTwo :: IO (Text, Text)
-evaluatePartTwo =
-  (, "Part Two") <$>
-  evaluate
-    inputParser
-    "src/Solutions/Day2/input.txt"
-    (\ins -> solvePartTwo ins (Position 0 0 0))
+partTwo = evaluate inputParser (`solvePartTwo` Position 0 0 0)
+
+partTwoSampleSolution :: Solution
+partTwoSampleSolution =
+  partTwo (Label "Part Two Sample Input") "src/Solutions/Day2/sample_input.txt"
+
+partTwoSolution :: Solution
+partTwoSolution = partTwo (Label "Part Two") "src/Solutions/Day2/input.txt"
 
 inputParser :: Parser [Instruction]
 inputParser = do
