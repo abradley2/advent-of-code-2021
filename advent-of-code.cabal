@@ -28,6 +28,7 @@ library
       Layout
       Lib
       Solutions.Day1
+      Solutions.Day2
       Solutions.Evaluate
   other-modules:
       Paths_advent_of_code

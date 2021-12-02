@@ -15,6 +15,7 @@ module Lib
 import           Layout         (layout)
 import           Relude
 import qualified Solutions.Day1 as Day1 (evaluatePartOne, evaluatePartTwo)
+import qualified Solutions.Day2 as Day2 (evaluatePartOne, evaluateSampleInput)
 import           Yesod
 import           Yesod.Static
 
@@ -24,6 +25,7 @@ getSolutions day =
     liftIO
     (case day of
        1 -> [Day1.evaluatePartOne, Day1.evaluatePartTwo]
+       2 -> [Day2.evaluateSampleInput, Day2.evaluatePartOne]
        _ -> [pure ("", "No Answers")])
 
 data App =
