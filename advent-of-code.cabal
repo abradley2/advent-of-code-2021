@@ -29,6 +29,7 @@ library
       Lib
       Solutions.Day1
       Solutions.Day2
+      Solutions.Day3
       Solutions.Evaluate
   other-modules:
       Paths_advent_of_code
@@ -36,6 +37,7 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , binary
     , parsec
     , relude
     , yesod
@@ -52,6 +54,7 @@ executable advent-of-code-exe
   build-depends:
       advent-of-code
     , base >=4.7 && <5
+    , binary
     , parsec
     , relude
     , yesod
@@ -69,6 +72,7 @@ test-suite advent-of-code-test
   build-depends:
       advent-of-code
     , base >=4.7 && <5
+    , binary
     , parsec
     , relude
     , yesod

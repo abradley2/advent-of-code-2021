@@ -16,6 +16,7 @@ import           Layout             (layout)
 import           Relude
 import           Solutions.Day1     as Day1
 import           Solutions.Day2     as Day2
+import           Solutions.Day3     as Day3
 import           Solutions.Evaluate (Solution)
 import           Yesod
 import           Yesod.Static
@@ -26,6 +27,7 @@ getSolutions day =
     (case day of
        1 -> [Day1.partOneSolution, Day1.partTwoSolution]
        2 -> [Day2.partOneSolution, Day2.partTwoSolution]
+       3 -> [Day3.partOneSampleSolution, Day3.partOneSolution]
        _ -> [])
 
 data App =

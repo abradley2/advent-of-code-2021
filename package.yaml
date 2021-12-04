@@ -25,6 +25,7 @@ dependencies:
 - yesod
 - yesod-static
 - parsec
+- binary
 
 library:
   source-dirs: src

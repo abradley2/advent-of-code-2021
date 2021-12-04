@@ -4,6 +4,7 @@
 
 module Solutions.Evaluate
   ( evaluate
+  , evaluateText
   , Label(..)
   , Solution
   ) where
@@ -26,3 +27,8 @@ evaluate parser solve (Label label) filePath = do
     case input of
       Left err          -> show err
       Right parsedInput -> show $ solve parsedInput
+
+evaluateText :: Show b => (Text -> b) -> Label -> FilePath -> Solution
+evaluateText solve (Label label) filePath = do
+  rawInput <- readFileText filePath
+  pure $ (, label) $ show $ solve rawInput
