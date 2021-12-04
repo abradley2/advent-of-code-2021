@@ -29,15 +29,16 @@ tableParser :: Int -> Table -> Parser Table
 tableParser rowIdx table = do
   row <- toIntMap . toList . mapWithIndex (,) . fromList <$> rowParser
   let nextTable = IntMap.insert rowIdx row table
-  (newline >> tableParser (rowIdx + 1) nextTable) P.<|> pure nextTable
+  try (newline >> noneOf "\n" >> tableParser (rowIdx + 1) nextTable) P.<|> pure nextTable
   where
     toIntMap :: [(Int, a)] -> IntMap a
     toIntMap = fromList
 
     rowParser :: Parser [(Int, Bool)]
     rowParser = do
+      void (many1 (char ' ')) P.<|> pure ()
       val <- (many1 (noneOf " \n") >>= parseInt "Row value is not an int") <&> (,False)
-      next <- (many1 (char ' ') >> rowParser) P.<|> (newline >> mempty)
+      next <- (many1 (char ' ') >> rowParser) P.<|> mempty
       pure (val:next)
 
 inputParser :: Parser (Entries, [Table])
@@ -55,7 +56,7 @@ inputParser = do
     tablesParser :: Parser [Table]
     tablesParser = do
       table <- tableParser 0 mempty
-      next <- (newline >>= const tablesParser) P.<|> pure []
+      next <- (newline >> newline >>= const tablesParser) P.<|> (eof >> pure [])
       pure (table:next)
 
 parseInt :: [Char] -> [Char] -> ParsecT Text () Identity Int
