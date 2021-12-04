@@ -71,4 +71,4 @@ extra-deps:
 
 nix:
   enable: true
-  packages: []
+  packages: [ zlib ]

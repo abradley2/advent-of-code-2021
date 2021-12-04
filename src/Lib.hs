@@ -27,7 +27,7 @@ getSolutions day =
     (case day of
        1 -> [Day1.partOneSolution, Day1.partTwoSolution]
        2 -> [Day2.partOneSolution, Day2.partTwoSolution]
-       3 -> [Day3.partOneSampleSolution, Day3.partOneSolution]
+       3 -> [Day3.partOneSampleSolution, Day3.partOneSolution, Day3.partTwoSampleSolution, Day3.partTwoSolution]
        _ -> [])
 
 data App =
