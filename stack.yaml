@@ -42,8 +42,6 @@ packages:
 #
 extra-deps:
   - yesod-1.6.1.2@sha256:d186c0564504d104c210b8d1609cf889fdcc78a094257da13c9ea0f7383b54f4,2030
-  - monad-logger-0.3.36@sha256:f66f7d5ce7b7f43e98efdb90f9c790fe022526bb9e1ba80060b8087e76e131dc,1755
-  - selda-0.5.1.0@sha256:8f4f7afddfb8ba3bcc8677e2a3f0b183ce85eed2c4ed6d7b8b40f057f573bf69,3111
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

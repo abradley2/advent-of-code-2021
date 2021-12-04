@@ -30,6 +30,7 @@ library
       Solutions.Day1
       Solutions.Day2
       Solutions.Day3
+      Solutions.Day4
       Solutions.Evaluate
   other-modules:
       Paths_advent_of_code
