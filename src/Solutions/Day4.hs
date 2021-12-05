@@ -6,21 +6,43 @@
 module Solutions.Day4 where
 
 import           Data.Foldable      (toList)
-import           Data.IntMap.Lazy   as IntMap (IntMap, insert)
+import           Data.IntMap.Lazy   (IntMap)
+import qualified Data.IntMap.Lazy   as IntMap (assocs, elems, fromList, insert)
+import           Data.List          ((!!))
 import           Data.Sequence      (mapWithIndex)
 import qualified Data.Sequence      as Seq (fromList)
-import           Data.Set.Ordered
-import qualified Data.Set.Ordered   as Set (fromList)
+import           Data.Set           (Set, isSubsetOf)
+import qualified Data.Set           as Set (fromList)
+import           Data.Set.Ordered   (OSet)
+import qualified Data.Set.Ordered   as OSet (elemAt, fromList, toSet)
 import           Relude
 import           Solutions.Evaluate (Label (..), Solution, evaluate)
-import           Text.Parsec
+import           Text.Parsec        hiding ((<|>))
 import qualified Text.Parsec        as P ((<|>))
 import           Text.Parsec.Text   (Parser)
 import           Text.Read          (readMaybe)
 
 type Entries = [Int]
 
-type Table = IntMap (IntMap (Int, Bool))
+type Table = IntMap (IntMap Int)
+
+type TableSets = [OSet Int]
+
+tableToSets :: Table -> TableSets
+tableToSets table =
+  let rowSets =
+        foldr
+          (\(rowIdx, columnMap) sets ->
+             OSet.fromList (IntMap.elems columnMap) : sets)
+          []
+          (IntMap.assocs table)
+      colSets =
+        fmap (fmap OSet.fromList . toList) $
+        sequence $
+        mapWithIndex
+          (\colIdx _ -> sequence $ (`OSet.elemAt` colIdx) <$> rowSets)
+          (Seq.fromList rowSets)
+   in rowSets <> fromMaybe [] colSets
 
 partOneSampleSolution :: Solution
 partOneSampleSolution =
@@ -30,42 +52,41 @@ partOneSampleSolution =
     (Label "Part One Sample")
     "src/Solutions/Day4/sample_input.txt"
 
-partOne :: (Entries, [Table]) -> Text
-partOne = show
+checkTableSets :: Entries -> TableSets -> Maybe (Set Int, [Int])
+checkTableSets entries [] = Nothing
+checkTableSets entries (curSet:next) =
+  checkTableSet (OSet.toSet curSet) [] entries <|> checkTableSets entries next
 
-a :: IntMap (Int, Bool) -> IntMap (Int, Bool)
-a = fmap (\v -> v)
+checkTableSet :: Set Int -> Entries -> Entries -> Maybe (Set Int, [Int])
+checkTableSet set curEntries nextEntries =
+  if set `isSubsetOf` Set.fromList curEntries
+    then Just (set, curEntries)
+    else case nextEntries of
+           []           -> Nothing
+           (entry:next) -> checkTableSet set (entry : curEntries) next
+
+partOne :: (Entries, [Table]) -> Text
+partOne (entries, tables') =
+  let tables = tableToSets <$> tables'
+      grades = checkTableSets entries <$> tables
+   in show grades
 
 checkTable :: Table -> Maybe Entries
 checkTable table = Nothing
 
-scoreTable :: Entries -> Table -> Maybe Text
-scoreTable (entry:next) table =
-  let updated =
-        fmap
-          (\(colVal, isChecked) ->
-             if colVal == entry
-               then (colVal, True)
-               else (colVal, isChecked)) <$>
-        table
-   in Nothing
-
 {- PARSING -}
 tableParser :: Int -> Table -> Parser Table
 tableParser rowIdx table = do
-  row <- toIntMap . toList . mapWithIndex (,) . Seq.fromList <$> rowParser
+  row <-
+    IntMap.fromList . toList . mapWithIndex (,) . Seq.fromList <$> rowParser
   let nextTable = IntMap.insert rowIdx row table
   try (newline >> noneOf "\n" >> tableParser (rowIdx + 1) nextTable) P.<|>
     pure nextTable
   where
-    toIntMap :: [(Int, a)] -> IntMap a
-    toIntMap = fromList
-    rowParser :: Parser [(Int, Bool)]
+    rowParser :: Parser [Int]
     rowParser = do
       void (many1 (char ' ')) P.<|> pure ()
-      val <-
-        (many1 (noneOf " \n") >>= parseInt "Row value is not an int") <&>
-        (, False)
+      val <- many1 (noneOf " \n") >>= parseInt "Row value is not an int"
       next <- (many1 (char ' ') >> rowParser) P.<|> mempty
       pure (val : next)
 
