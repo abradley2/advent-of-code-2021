@@ -25,7 +25,7 @@ dependencies:
 - yesod
 - yesod-static
 - parsec
-- binary
+- ordered-containers
 
 library:
   source-dirs: src
