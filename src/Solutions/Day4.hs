@@ -68,8 +68,16 @@ checkTableSet set curEntries nextEntries =
 partOne :: (Entries, [Table]) -> Text
 partOne (entries, tables') =
   let tables = tableToSets <$> tables'
-      grades = checkTableSets entries <$> tables
-   in show grades
+      grades = catMaybes $ checkTableSets entries <$> tables
+      winner =
+        foldr
+          (\cur champion ->
+             if (length $ snd cur) < (fromMaybe 0 $ (length . snd) <$> champion)
+               then Just cur
+               else Just $ fromMaybe cur champion)
+          (grades !!? 0)
+          grades
+   in show winner
 
 checkTable :: Table -> Maybe Entries
 checkTable table = Nothing
