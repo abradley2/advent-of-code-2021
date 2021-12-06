@@ -11,13 +11,14 @@ import qualified Data.IntMap.Lazy   as IntMap (assocs, elems, fromList, insert)
 import           Data.List          ((!!))
 import           Data.Sequence      (mapWithIndex)
 import qualified Data.Sequence      as Seq (fromList)
-import           Data.Set           (Set, isSubsetOf)
+import           Data.Set           (Set, difference, isSubsetOf, union)
 import qualified Data.Set           as Set (fromList)
 import           Data.Set.Ordered   (OSet)
 import qualified Data.Set.Ordered   as OSet (elemAt, fromList, toSet)
 import           Relude
 import           Solutions.Evaluate (Label (..), Solution, evaluate)
-import           Text.Parsec        hiding ((<|>))
+import           Text.Parsec        (ParsecT, char, eof, many1, newline, noneOf,
+                                     try)
 import qualified Text.Parsec        as P ((<|>))
 import           Text.Parsec.Text   (Parser)
 import           Text.Read          (readMaybe)
@@ -34,35 +35,46 @@ partOneSampleSolution =
     (Label "Part One Sample")
     "src/Solutions/Day4/sample_input.txt"
 
-checkTableSets :: Entries -> Table -> Maybe (Set Int, [Int])
-checkTableSets entries =
-  foldr
-    (\curSet -> (<|>) (checkTableSet (OSet.toSet curSet) [] entries))
-    Nothing
+checkTables :: Entries -> Table -> Maybe (Set Int, [Int])
+checkTables entries =
+  foldr (\curSet -> (<|>) (checkTable (OSet.toSet curSet) [] entries)) Nothing
 
-checkTableSet :: Set Int -> Entries -> Entries -> Maybe (Set Int, [Int])
-checkTableSet set curEntries nextEntries =
-  if set `isSubsetOf` Set.fromList curEntries
-    then Just (set, curEntries)
-    else case nextEntries of
-           []           -> Nothing
-           (entry:next) -> checkTableSet set (entry : curEntries) next
+checkTable :: Set Int -> Entries -> Entries -> Maybe (Set Int, [Int])
+checkTable set [] [] = Nothing
+checkTable set [] (entry:next) = checkTable set [entry] next
+checkTable set (called:prevEntries) nextEntries =
+  let curEntries = (called : prevEntries)
+   in if set `isSubsetOf` Set.fromList curEntries
+        then Just (set, curEntries)
+        else case nextEntries of
+               []           -> Nothing
+               (entry:next) -> checkTable set (entry : curEntries) next
+
+scoreTable :: Entries -> Table -> Int
+scoreTable [] _ = 0
+scoreTable (calledEntry:entries) table =
+  let entries' = Set.fromList entries
+      table' = Set.fromList $ table >>= toList
+      unmarkedValue =
+        getSum $ (foldMap Sum . toList) $ difference entries' table'
+      marked = union entries' table'
+   in unmarkedValue * calledEntry
 
 partOne :: (Entries, [Table]) -> Text
 partOne (entries, tables) =
-  let grades = catMaybes $ checkTableSets entries <$> tables
+  let grades =
+        catMaybes $
+        (\table -> (table, ) <$> checkTables entries table) <$> tables
       winner =
         foldr
           (\cur champion ->
-             if length (snd cur) < maybe 0 (length . snd) champion
-               then Just cur
-               else Just $ fromMaybe cur champion)
+             let (table, (_, calledEntries)) = cur
+              in if length calledEntries < maybe 0 (length . snd . snd) champion
+                   then Just cur
+                   else champion)
           (grades !!? 0)
           grades
-   in show winner
-
-checkTable :: Table -> Maybe Entries
-checkTable table = Nothing
+   in show $ (\(table, (_, entries)) -> scoreTable entries table) <$> winner
 
 {- PARSING -}
 tableParser :: Parser Table
