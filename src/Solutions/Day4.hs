@@ -24,25 +24,7 @@ import           Text.Read          (readMaybe)
 
 type Entries = [Int]
 
-type Table = IntMap (IntMap Int)
-
-type TableSets = [OSet Int]
-
-tableToSets :: Table -> TableSets
-tableToSets table =
-  let rowSets =
-        foldr
-          (\(rowIdx, columnMap) sets ->
-             OSet.fromList (IntMap.elems columnMap) : sets)
-          []
-          (IntMap.assocs table)
-      colSets =
-        fmap (fmap OSet.fromList . toList) $
-        sequence $
-        mapWithIndex
-          (\colIdx _ -> sequence $ (`OSet.elemAt` colIdx) <$> rowSets)
-          (Seq.fromList rowSets)
-   in rowSets <> fromMaybe [] colSets
+type Table = [OSet Int]
 
 partOneSampleSolution :: Solution
 partOneSampleSolution =
@@ -52,10 +34,11 @@ partOneSampleSolution =
     (Label "Part One Sample")
     "src/Solutions/Day4/sample_input.txt"
 
-checkTableSets :: Entries -> TableSets -> Maybe (Set Int, [Int])
-checkTableSets entries [] = Nothing
-checkTableSets entries (curSet:next) =
-  checkTableSet (OSet.toSet curSet) [] entries <|> checkTableSets entries next
+checkTableSets :: Entries -> Table -> Maybe (Set Int, [Int])
+checkTableSets entries =
+  foldr
+    (\curSet -> (<|>) (checkTableSet (OSet.toSet curSet) [] entries))
+    Nothing
 
 checkTableSet :: Set Int -> Entries -> Entries -> Maybe (Set Int, [Int])
 checkTableSet set curEntries nextEntries =
@@ -66,13 +49,12 @@ checkTableSet set curEntries nextEntries =
            (entry:next) -> checkTableSet set (entry : curEntries) next
 
 partOne :: (Entries, [Table]) -> Text
-partOne (entries, tables') =
-  let tables = tableToSets <$> tables'
-      grades = catMaybes $ checkTableSets entries <$> tables
+partOne (entries, tables) =
+  let grades = catMaybes $ checkTableSets entries <$> tables
       winner =
         foldr
           (\cur champion ->
-             if (length $ snd cur) < (fromMaybe 0 $ (length . snd) <$> champion)
+             if length (snd cur) < maybe 0 (length . snd) champion
                then Just cur
                else Just $ fromMaybe cur champion)
           (grades !!? 0)
@@ -83,13 +65,12 @@ checkTable :: Table -> Maybe Entries
 checkTable table = Nothing
 
 {- PARSING -}
-tableParser :: Int -> Table -> Parser Table
-tableParser rowIdx table = do
-  row <-
-    IntMap.fromList . toList . mapWithIndex (,) . Seq.fromList <$> rowParser
-  let nextTable = IntMap.insert rowIdx row table
-  try (newline >> noneOf "\n" >> tableParser (rowIdx + 1) nextTable) P.<|>
-    pure nextTable
+tableParser :: Parser Table
+tableParser = do
+  row <- OSet.fromList <$> rowParser
+  nextRows <- try (newline >> noneOf "\n" >> tableParser) P.<|> pure []
+  let tableRows = row : nextRows
+  pure $ appendColumnSets tableRows
   where
     rowParser :: Parser [Int]
     rowParser = do
@@ -97,6 +78,15 @@ tableParser rowIdx table = do
       val <- many1 (noneOf " \n") >>= parseInt "Row value is not an int"
       next <- (many1 (char ' ') >> rowParser) P.<|> mempty
       pure (val : next)
+    appendColumnSets :: Table -> Table
+    appendColumnSets tableRows =
+      let tableColumns =
+            fmap OSet.fromList $
+            toList $
+            mapWithIndex
+              (\colIdx _ -> (!! colIdx) . toList <$> tableRows)
+              (Seq.fromList tableRows)
+       in tableRows <> tableColumns
 
 inputParser :: Parser (Entries, [Table])
 inputParser = do
@@ -112,7 +102,7 @@ inputParser = do
       pure (val : next)
     tablesParser :: Parser [Table]
     tablesParser = do
-      table <- tableParser 0 mempty
+      table <- tableParser
       next <- (newline >> newline >>= const tablesParser) P.<|> (eof >> pure [])
       pure (table : next)
 
