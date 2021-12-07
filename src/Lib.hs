@@ -18,6 +18,7 @@ import           Solutions.Day1     as Day1
 import           Solutions.Day2     as Day2
 import           Solutions.Day3     as Day3
 import           Solutions.Day4     as Day4
+import qualified Solutions.Day4     as Day4
 import           Solutions.Evaluate (Solution)
 import           Yesod
 import           Yesod.Static
@@ -34,7 +35,7 @@ getSolutions day =
          , Day3.partTwoSampleSolution
          , Day3.partTwoSolution
          ]
-       4 -> [Day4.partOneSampleSolution]
+       4 -> [Day4.partOneSampleSolution, Day4.partOneSolution]
        _ -> [])
 
 data App =

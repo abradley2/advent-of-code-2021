@@ -18,7 +18,7 @@ import qualified Data.Set.Ordered   as OSet (elemAt, fromList, toSet)
 import           Relude
 import           Solutions.Evaluate (Label (..), Solution, evaluate)
 import           Text.Parsec        (ParsecT, char, eof, many1, newline, noneOf,
-                                     try)
+                                     oneOf, try)
 import qualified Text.Parsec        as P ((<|>))
 import           Text.Parsec.Text   (Parser)
 import           Text.Read          (readMaybe)
@@ -27,6 +27,8 @@ type Entries = [Int]
 
 type Table = [OSet Int]
 
+-- 43010
+-- 22962
 partOneSampleSolution :: Solution
 partOneSampleSolution =
   evaluate
@@ -35,70 +37,83 @@ partOneSampleSolution =
     (Label "Part One Sample")
     "src/Solutions/Day4/sample_input.txt"
 
-checkTables :: Entries -> Table -> Maybe (Set Int, [Int])
-checkTables entries =
-  foldr (\curSet -> (<|>) (checkTable (OSet.toSet curSet) [] entries)) Nothing
+partOneSolution :: Solution
+partOneSolution =
+  evaluate inputParser partOne (Label "Part One") "src/Solutions/Day4/input.txt"
 
-checkTable :: Set Int -> Entries -> Entries -> Maybe (Set Int, [Int])
-checkTable set [] [] = Nothing
-checkTable set [] (entry:next) = checkTable set [entry] next
-checkTable set (called:prevEntries) nextEntries =
-  let curEntries = (called : prevEntries)
-   in if set `isSubsetOf` Set.fromList curEntries
-        then Just (set, curEntries)
-        else case nextEntries of
-               []           -> Nothing
-               (entry:next) -> checkTable set (entry : curEntries) next
+checkTable :: Entries -> Entries -> Table -> Maybe (Set Int, [Int])
+checkTable entries nextEntries table =
+  let match =
+        foldl'
+          (\acc tableRowCol ->
+             acc <|> checkTableRowCol (OSet.toSet tableRowCol) entries)
+          Nothing
+          table
+   in case match of
+        Just m -> Just m
+        Nothing ->
+          case nextEntries of
+            (next:nextEntries) -> checkTable (next : entries) nextEntries table
+            []                 -> Nothing
 
-scoreTable :: Entries -> Table -> Int
-scoreTable [] _ = 0
-scoreTable (calledEntry:entries) table =
-  let entries' = Set.fromList entries
+checkTableRowCol :: Set Int -> Entries -> Maybe (Set Int, [Int])
+checkTableRowCol set entries =
+  if set `isSubsetOf` Set.fromList entries
+    then Just (set, entries)
+    else Nothing
+
+scoreTable :: Entries -> Table -> (Int, (Int, Int), [Int])
+scoreTable (calledEntry:nextEntries) table =
+  let entries' = Set.fromList (calledEntry : nextEntries)
       table' = Set.fromList $ table >>= toList
-      unmarkedValue =
-        getSum $ (foldMap Sum . toList) $ difference entries' table'
-      marked = union entries' table'
-   in unmarkedValue * calledEntry
+      unmarkedValue = getSum $ foldMap Sum . toList $ difference table' entries'
+   in ( calledEntry * unmarkedValue
+      , (calledEntry, unmarkedValue)
+      , calledEntry : nextEntries)
 
 partOne :: (Entries, [Table]) -> Text
-partOne (entries, tables) =
+partOne (firstEntry:nextEntries, tables) =
   let grades =
         catMaybes $
-        (\table -> (table, ) <$> checkTables entries table) <$> tables
+        (\table -> (table, ) <$> checkTable [firstEntry] nextEntries table) .
+        appendColumnSets <$>
+        tables
       winner =
         foldr
           (\cur champion ->
              let (table, (_, calledEntries)) = cur
-              in if length calledEntries < maybe 0 (length . snd . snd) champion
-                   then Just cur
+                 (_, (_, calledEntries')) = champion
+              in if length calledEntries > length calledEntries'
+                   then cur
                    else champion)
-          (grades !!? 0)
+          (grades !! 0)
           grades
-   in show $ (\(table, (_, entries)) -> scoreTable entries table) <$> winner
+   in show $
+      (\(table, (_, calledEntries)) -> scoreTable calledEntries table) winner
+
+appendColumnSets :: Table -> Table
+appendColumnSets tableRows' =
+  let tableColumns =
+        toList $
+        mapWithIndex
+          (\colIdx _ -> (!! colIdx) . toList <$> tableRows')
+          (Seq.fromList tableRows')
+   in tableRows' <> (OSet.fromList <$> tableColumns)
 
 {- PARSING -}
 tableParser :: Parser Table
 tableParser = do
   row <- OSet.fromList <$> rowParser
-  nextRows <- try (newline >> noneOf "\n" >> tableParser) P.<|> pure []
+  nextRows <- try (newline >> tableParser) P.<|> pure []
   let tableRows = row : nextRows
-  pure $ appendColumnSets tableRows
+  pure tableRows
   where
     rowParser :: Parser [Int]
     rowParser = do
-      void (many1 (char ' ')) P.<|> pure ()
+      void $ many $ char ' '
       val <- many1 (noneOf " \n") >>= parseInt "Row value is not an int"
-      next <- (many1 (char ' ') >> rowParser) P.<|> mempty
+      next <- (many1 (oneOf " ") >> rowParser) P.<|> mempty
       pure (val : next)
-    appendColumnSets :: Table -> Table
-    appendColumnSets tableRows =
-      let tableColumns =
-            fmap OSet.fromList $
-            toList $
-            mapWithIndex
-              (\colIdx _ -> (!! colIdx) . toList <$> tableRows)
-              (Seq.fromList tableRows)
-       in tableRows <> tableColumns
 
 inputParser :: Parser (Entries, [Table])
 inputParser = do
@@ -118,5 +133,11 @@ inputParser = do
       next <- (newline >> newline >>= const tablesParser) P.<|> (eof >> pure [])
       pure (table : next)
 
-parseInt :: [Char] -> [Char] -> ParsecT Text () Identity Int
+parseInt :: String -> String -> ParsecT Text () Identity Int
 parseInt err = maybe (fail err) pure . readMaybe
+
+whitespace :: Parser ()
+whitespace = void $ many1 $ oneOf " \t"
+
+ignoreWhitespace :: Parser ()
+ignoreWhitespace = void $ many $ oneOf " \t"
