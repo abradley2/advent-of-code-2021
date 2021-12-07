@@ -36,12 +36,7 @@ getSolutions day =
          , Day3.partTwoSolution
          ]
        4 -> [Day4.partOneSampleSolution, Day4.partOneSolution]
-       5 ->
-         [ Day5.partOneSampleSolution
-         , Day5.partOneSolution
-         , Day5.partTwoSampleSolution
-         , Day5.partTwoSolution
-         ]
+       5 -> [Day5.partTwoSampleSolution]
        _ -> [])
 
 data App =

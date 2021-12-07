@@ -43,7 +43,7 @@ explodePathDiag (cur, dest)
   | cur /= dest = next (moveCoord cur dest)
   | otherwise = []
   where
-    next coords = coords : explodePath (coords, dest)
+    next coords = coords : explodePathDiag (coords, dest)
 
 moveCoord :: Coord -> Coord -> Coord
 moveCoord (x1, y1) (x2, y2) = (move x1 x2, move y1 y2)
