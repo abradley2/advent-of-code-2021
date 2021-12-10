@@ -32,6 +32,7 @@ library
       Solutions.Day3
       Solutions.Day4
       Solutions.Day5
+      Solutions.Day6
       Solutions.Evaluate
   other-modules:
       Paths_advent_of_code
@@ -39,6 +40,7 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , hashable
     , ordered-containers
     , parsec
     , relude
@@ -56,6 +58,7 @@ executable advent-of-code-exe
   build-depends:
       advent-of-code
     , base >=4.7 && <5
+    , hashable
     , ordered-containers
     , parsec
     , relude
@@ -74,6 +77,7 @@ test-suite advent-of-code-test
   build-depends:
       advent-of-code
     , base >=4.7 && <5
+    , hashable
     , ordered-containers
     , parsec
     , relude
