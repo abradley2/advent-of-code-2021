@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections     #-}
 
 module Solutions.Day6 where
 
@@ -32,58 +33,16 @@ partOne :: Int -> Input -> Int
 partOne dayCount input = length $ simulateDays dayCount input
 
 partTwo :: Int -> [Int] -> Int
-partTwo dayCount input = length $ simulateDaysChunked dayCount input mempty
+partTwo dayCount input = simulateAll $ (dayCount, ) <$> input
 
-data CacheEntry a =
-  CacheEntry
-    { initialValue  :: Int
-    , elapsableDays :: Int
-    }
-  deriving (Eq, Generic, Show)
+simulateAll :: [(Int, Int)] -> Int
+simulateAll []                = 0
+simulateAll ((days, fish):xs) = 1 + simulateAll (simulate (days, fish) <> xs)
 
-instance Hashable a => Hashable (CacheEntry a)
-
-type CacheMap = HashMap (CacheEntry ()) [Int]
-
-simulateDaysChunked :: Int -> [Int] -> CacheMap -> [Int]
-simulateDaysChunked days
-  | days > 0 =
-    \input cache ->
-      let (fishesResult, cacheResult) =
-            foldr
-              (\fish (fishes, cache') ->
-                 let (nextFishes, nextCache) = simulate18 fish days cache'
-                  in (fishes <> nextFishes, nextCache))
-              ([], cache)
-              input
-       in simulateDaysChunked (days - min days 18) fishesResult cacheResult
-  | otherwise = \input cache -> input
-
-simulateAll :: [(Int, Int)] -> [Int]
-simulateAll ((days, fish):rest) = []
-
-simulateChunk :: (Int, Int) -> [(Int, Int)]
-simulateChunk (days, fish) =
-  let elapsableDays' = 256 + fish
-      (result, _) =
-        foldr
-          (\daysElapsed (school, fishVal) ->
-             case fishVal of
-               (-1) -> ((days - daysElapsed, 8) : school, 6)
-               _    -> (school, fishVal - 1))
-          ([], fish)
-          [1 .. elapsableDays']
-   in (0, fish) : result
-
-simulate18 :: Int -> Int -> CacheMap -> ([Int], CacheMap)
-simulate18 fishValue days cache =
-  let elapsableDays' = days - min days 18
-      cacheKey = CacheEntry fishValue elapsableDays'
-      result =
-        fromMaybe
-          (simulateDays elapsableDays' [fishValue])
-          (lookup cacheKey cache)
-   in (result, insert cacheKey result cache)
+simulate :: (Int, Int) -> [(Int, Int)]
+simulate (-1, _)      = []
+simulate (days, -1)   = (days, 6) : simulate (days - 1, 7)
+simulate (days, fish) = simulate (days - 1, fish - 1)
 
 simulateDays :: Int -> [Int] -> [Int]
 simulateDays 0 input = input
@@ -124,13 +83,21 @@ partOneSolution =
     (Label "Part One")
     "src/Solutions/Day6/input.txt"
 
+partTwoSampleSolution :: Solution
+partTwoSampleSolution =
+  evaluate
+    inputParser
+    (partTwo 80)
+    (Label "Part Two Sample")
+    "src/Solutions/Day6/sample_input.txt"
+
 partTwoSolution :: Solution
 partTwoSolution =
   evaluate
     inputParser
-    (partTwo 18)
+    (partTwo 80)
     (Label "Part Two")
-    "src/Solutions/Day6/sample_input.txt"
+    "src/Solutions/Day6/input.txt"
 
 inputParser :: Parser Input
 inputParser = do
@@ -140,3 +107,14 @@ inputParser = do
 
 readInt :: [Char] -> Parser Int
 readInt = maybe (fail "not an int") pure . readMaybe
+
+data CacheEntry a =
+  CacheEntry
+    { initialValue  :: Int
+    , elapsableDays :: Int
+    }
+  deriving (Eq, Generic, Show)
+
+instance Hashable a => Hashable (CacheEntry a)
+
+type CacheMap = HashMap (CacheEntry ()) [Int]
