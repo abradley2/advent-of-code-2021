@@ -39,6 +39,14 @@ simulateAll :: [(Int, Int)] -> Int
 simulateAll []                = 0
 simulateAll ((days, fish):xs) = 1 + simulateAll (simulate (days, fish) <> xs)
 
+chunkDaysBy :: Int -> Int -> [Int]
+chunkDaysBy chunkSize dayCount =
+  let (quotient, remainder) = dayCount `divMod` chunkSize
+   in replicate quotient chunkSize <> [remainder]
+
+chunkDays :: Int -> [Int]
+chunkDays = chunkDaysBy 64
+
 simulate :: (Int, Int) -> [(Int, Int)]
 simulate (-1, _)      = []
 simulate (days, -1)   = (days, 6) : simulate (days - 1, 7)
