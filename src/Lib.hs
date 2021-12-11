@@ -46,6 +46,7 @@ getSolutions day =
        6 ->
          [ Day6.partOneSampleSolution
          , Day6.partOneSolution
+         , Day6.partTwoSampleSolution
          , Day6.partTwoSolution
          ]
        _ -> [])

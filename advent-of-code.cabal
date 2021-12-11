@@ -45,6 +45,7 @@ library
     , ordered-containers
     , parsec
     , relude
+    , split
     , yesod
     , yesod-static
   default-language: Haskell2010
@@ -63,6 +64,7 @@ executable advent-of-code-exe
     , ordered-containers
     , parsec
     , relude
+    , split
     , yesod
     , yesod-static
   default-language: Haskell2010
@@ -82,6 +84,7 @@ test-suite advent-of-code-test
     , ordered-containers
     , parsec
     , relude
+    , split
     , yesod
     , yesod-static
   default-language: Haskell2010

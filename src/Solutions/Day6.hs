@@ -9,6 +9,8 @@ import           Data.Foldable      (toList)
 import           Data.HashMap.Lazy  (HashMap, insert, lookup)
 import qualified Data.HashMap.Lazy  as HashMap
 import           Data.Hashable
+import           Data.List          ((!!))
+import           Data.List.Split    (chunksOf)
 import           Data.Sequence      (mapWithIndex)
 import qualified Data.Sequence      as Seq (fromList)
 import           Relude
@@ -33,19 +35,40 @@ partOne :: Int -> Input -> Int
 partOne dayCount input = length $ simulateDays dayCount input
 
 partTwo :: Int -> [Int] -> Int
-partTwo dayCount input = simulateAll $ (dayCount, ) <$> input
+partTwo dayCount input = simulateAll mempty $ (dayCount, ) <$> input
 
-simulateAll :: [(Int, Int)] -> Int
-simulateAll []                = 0
-simulateAll ((days, fish):xs) = 1 + simulateAll (simulate (days, fish) <> xs)
+-- get a fishes liftime, a 6 to 0 descending cycle that repeats until "dayCount" reaches 0
+type Cache = HashMap (Int, Int) [(Int, Int)]
 
-chunkDaysBy :: Int -> Int -> [Int]
-chunkDaysBy chunkSize dayCount =
-  let (quotient, remainder) = dayCount `divMod` chunkSize
-   in replicate quotient chunkSize <> [remainder]
+flattenInputs :: Int -> [Int] -> [(Int, Int)]
+flattenInputs days = join . fmap (flattenInput days)
 
-chunkDays :: Int -> [Int]
-chunkDays = chunkDaysBy 64
+flattenInput :: Int -> Int -> [(Int, Int)]
+flattenInput days fish =
+  let delimiter = 4
+      -- for a day count of 13 and a delimiter of 4, we'll want "3 chunks of 4, and a remainder chunk of 1"
+      (dayChunks, remainder) = days `divMod` delimiter
+      -- convert the previous into a proper list "[4, 4, 4, 1]"
+      dayVals = replicate dayChunks delimiter <> [remainder]
+      -- to get the same concept for fish values, we need to get the fish lifetime,
+      -- chunk it by the same delimiter, and take the fishes "starting value" at each point.
+      -- a fish of value "3" at day 13 will have starting points at intervals of 4 of [3, 6, 2, 5]
+      fishVals = fmap (!! 0) $ chunksOf delimiter $ fishLifetime days fish
+     -- finally we combine the two by index
+   in toList $
+      mapWithIndex (\idx dayVal -> (dayVal, fishVals !! idx)) $
+      Seq.fromList dayVals
+  where
+    fishLifetime :: Int -> Int -> [Int]
+    fishLifetime 0 val         = []
+    fishLifetime dayCount (-1) = 6 : fishLifetime (dayCount - 1) 5
+    fishLifetime dayCount val  = val : fishLifetime (dayCount - 1) (val - 1)
+
+simulateAll :: Cache -> [(Int, Int)] -> Int
+simulateAll cache [] = 0
+simulateAll cache ((days, fish):xs) =
+  let
+   in 1 + simulateAll cache (simulate (days, fish) <> xs)
 
 simulate :: (Int, Int) -> [(Int, Int)]
 simulate (-1, _)      = []
@@ -115,14 +138,3 @@ inputParser = do
 
 readInt :: [Char] -> Parser Int
 readInt = maybe (fail "not an int") pure . readMaybe
-
-data CacheEntry a =
-  CacheEntry
-    { initialValue  :: Int
-    , elapsableDays :: Int
-    }
-  deriving (Eq, Generic, Show)
-
-instance Hashable a => Hashable (CacheEntry a)
-
-type CacheMap = HashMap (CacheEntry ()) [Int]
