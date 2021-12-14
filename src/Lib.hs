@@ -15,6 +15,7 @@ module Lib
 import           Layout             (layout)
 import           Relude
 import           Solutions.Day1     as Day1
+import           Solutions.Day10    as Day10
 import           Solutions.Day2     as Day2
 import           Solutions.Day3     as Day3
 import           Solutions.Day4     as Day4
@@ -49,6 +50,7 @@ getSolutions day =
          , Day6.partTwoSampleSolution
          , Day6.partTwoSolution
          ]
+       10 -> [Day10.partOneSampleSolution, Day10.partOneSolution]
        _ -> [])
 
 data App =
@@ -88,7 +90,7 @@ getDayR (DayID day) = do
       $forall (answer, label) <- solutions
         <div class="label-answer-group">
           <div class="label">#{label}
-          <span class="answer">#{answer}
+          <pre class="answer">#{answer}
     |]
     toWidget
       [lucius|
