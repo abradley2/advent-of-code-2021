@@ -8,20 +8,32 @@
 module Solutions.Day10 where
 
 import           Data.Foldable
-import           Data.HashMap.Lazy  (HashMap, alter)
+import           Data.HashMap.Lazy  (HashMap, alter, elems)
 import qualified Data.HashMap.Lazy  as HashMap (toList)
-import           Data.Set           (Set, difference)
-import qualified Data.Set           as Set (fromList, singleton)
+import           Data.List          (delete)
 import           Data.Text          (pack)
-import           Relude             hiding (many)
+import           Relude             hiding (many, (<|>))
 import           Solutions.Evaluate (Label (..), Solution, evaluateText)
 import           Text.Parsec        (ParseError (..), ParsecT, char, eof,
                                      getPosition, many, many1, newline, noneOf,
-                                     oneOf, runPT, try)
-import qualified Text.Parsec        as P ((<|>))
+                                     oneOf, runPT, try, (<|>))
+import           Text.Parsec.Pos    (sourceLine)
 import           Text.Parsec.Text   (Parser)
 
 type Results = HashMap Char Int
+
+addResult :: Char -> ParsecT Text () (State Results) ()
+addResult c = state (\s -> ((), alter (Just . maybe 1 (+ 1)) c s))
+
+type CloserResults = HashMap Int [Char]
+
+addCloserResult :: Int -> Char -> ParsecT Text () (State CloserResults) ()
+addCloserResult l c = state (\s -> ((), alter (Just . maybe [c] (<> [c])) l s))
+
+popCloserResult :: Int -> Char -> ParsecT Text () (State CloserResults) ()
+popCloserResult l c =
+  state
+    (\s -> ((), alter (Just . maybe "ERROR" (reverse . delete c . reverse)) l s))
 
 scoreResults :: Results -> Int
 scoreResults =
@@ -45,13 +57,22 @@ closerFor '<' = '>'
 closerFor '{' = '}'
 
 foldParsers :: forall s u (m :: * -> *) a. [ParsecT s u m a] -> ParsecT s u m a
-foldParsers = foldr (\a b -> b P.<|> a) (do fail "")
-
-addResult :: Char -> ParsecT Text () (State Results) ()
-addResult c = state (\s -> ((), alter (Just . maybe 1 (+ 1)) c s))
+foldParsers = foldr (\a b -> b <|> a) (do fail "")
 
 discardRemainingLine :: Monad m => ParsecT Text () m ()
 discardRemainingLine = void (many1 $ noneOf "\n")
+
+incompleteLineParser :: ParsecT Text () (State CloserResults) ()
+incompleteLineParser = void $ foldParsers (mkParser <$> toList openers)
+  where
+    allParsers :: ParsecT Text () (State CloserResults) ()
+    allParsers = foldParsers $ mkParser <$> toList openers
+    mkParser :: Char -> ParsecT Text () (State CloserResults) ()
+    mkParser c = do
+      line <- sourceLine <$> getPosition
+      char c >> addCloserResult line c
+      void (many allParsers)
+      void (char $ closerFor c) >> popCloserResult line c
 
 corruptLineParser :: ParsecT Text () (State Results) ()
 corruptLineParser = void $ foldParsers (mkParser <$> toList openers)
@@ -61,24 +82,33 @@ corruptLineParser = void $ foldParsers (mkParser <$> toList openers)
     mkParser :: Char -> ParsecT Text () (State Results) ()
     mkParser c = do
       char c
-      eof P.<|> void (many allParsers)
-      eof P.<|> void (char (closerFor c)) P.<|>
+      eof <|> void (many allParsers)
+      eof <|> void (char (closerFor c)) <|>
         (do c <- noneOf "\n"
             _ <- addResult c
-            discardRemainingLine) P.<|>
+            discardRemainingLine) <|>
         pure ()
 
-inputParser :: ParsecT Text () (State Results) ()
-inputParser =
+inputParser :: ParsecT Text () (State s) () -> ParsecT Text () (State s) ()
+inputParser lineParser =
   void $ do
-    _ <- corruptLineParser
-    _ <- (try newline >> inputParser) P.<|> eof
+    _ <- lineParser
+    _ <- (try newline >> inputParser lineParser) <|> eof
     pure ()
 
 partOne :: Text -> Text
 partOne input =
   show $
-  scoreResults $ snd $ flip runState mempty $ runPT inputParser () "Input" input
+  scoreResults $
+  snd $
+  flip runState mempty $ runPT (inputParser corruptLineParser) () "Input" input
+
+partTwo :: Text -> Text
+partTwo input =
+  show $
+  snd $
+  flip runState mempty $
+  runPT (inputParser incompleteLineParser) () "Input" input
 
 partOneSampleSolution :: Solution
 partOneSampleSolution =
@@ -90,3 +120,10 @@ partOneSampleSolution =
 partOneSolution :: Solution
 partOneSolution =
   evaluateText partOne (Label "Part One") "src/Solutions/Day10/input.txt"
+
+partTwoSampleSolution :: Solution
+partTwoSampleSolution =
+  evaluateText
+    partTwo
+    (Label "Part Two Sample")
+    "src/Solutions/Day10/sample_input.txt"
