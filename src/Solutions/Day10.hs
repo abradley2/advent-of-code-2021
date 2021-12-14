@@ -72,7 +72,7 @@ incompleteLineParser = void $ foldParsers (mkParser <$> toList openers)
       line <- sourceLine <$> getPosition
       char c >> addCloserResult line c
       void (many allParsers)
-      void (char $ closerFor c) >> popCloserResult line c
+      (void (char $ closerFor c) >> popCloserResult line c) <|> pure ()
 
 corruptLineParser :: ParsecT Text () (State Results) ()
 corruptLineParser = void $ foldParsers (mkParser <$> toList openers)
