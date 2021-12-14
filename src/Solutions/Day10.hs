@@ -47,29 +47,26 @@ closerFor '{' = '}'
 foldParsers :: forall s u (m :: * -> *) a. [ParsecT s u m a] -> ParsecT s u m a
 foldParsers = foldr (\a b -> b P.<|> a) (do fail "")
 
-recordVal :: Char -> ParsecT Text () (State Results) ()
-recordVal c = state (\s -> ((), alter (Just . maybe 1 (+ 1)) c s))
+addResult :: Char -> ParsecT Text () (State Results) ()
+addResult c = state (\s -> ((), alter (Just . maybe 1 (+ 1)) c s))
 
 discardRemainingLine :: Monad m => ParsecT Text () m ()
 discardRemainingLine = void (many1 $ noneOf "\n")
 
 corruptLineParser :: ParsecT Text () (State Results) ()
-corruptLineParser = do
-  _ <- foldParsers (mkParser <$> toList openers)
-  pure ()
+corruptLineParser = void $ foldParsers (mkParser <$> toList openers)
   where
+    allParsers :: ParsecT Text () (State Results) ()
+    allParsers = foldParsers $ mkParser <$> toList openers
     mkParser :: Char -> ParsecT Text () (State Results) ()
-    mkParser c =
-      let otherChars = foldParsers $ mkParser <$> toList openers
-       in do _ <- char c
-             _ <- eof P.<|> void (many otherChars)
-             _ <-
-               eof P.<|> void (char (closerFor c)) P.<|>
-               (do c <- noneOf "\n"
-                   _ <- recordVal c
-                   discardRemainingLine) P.<|>
-               pure ()
-             pure ()
+    mkParser c = do
+      char c
+      eof P.<|> void (many allParsers)
+      eof P.<|> void (char (closerFor c)) P.<|>
+        (do c <- noneOf "\n"
+            _ <- addResult c
+            discardRemainingLine) P.<|>
+        pure ()
 
 inputParser :: ParsecT Text () (State Results) ()
 inputParser =
