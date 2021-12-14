@@ -62,12 +62,13 @@ corruptLineParser = do
     mkParser c =
       let otherChars = foldParsers $ mkParser <$> toList openers
        in do _ <- char c
-             _ <- many otherChars
+             _ <- eof P.<|> void (many otherChars)
              _ <-
-               void (char (closerFor c)) P.<|> void (try newline) P.<|>
-               (noneOf "\n" >>= \c -> do
-                  _ <- recordVal c
-                  discardRemainingLine)
+               eof P.<|> void (char (closerFor c)) P.<|>
+               (do c <- noneOf "\n"
+                   _ <- recordVal c
+                   discardRemainingLine) P.<|>
+               pure ()
              pure ()
 
 inputParser :: ParsecT Text () (State Results) ()
