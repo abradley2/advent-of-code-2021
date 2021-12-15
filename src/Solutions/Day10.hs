@@ -25,15 +25,17 @@ type Results = HashMap Char Int
 addResult :: Char -> ParsecT Text () (State Results) ()
 addResult c = state (\s -> ((), alter (Just . maybe 1 (+ 1)) c s))
 
-type CloserResults = HashMap Int [Char]
+type CloserResults = HashMap Int String
 
 addCloserResult :: Int -> Char -> ParsecT Text () (State CloserResults) ()
 addCloserResult l c = state (\s -> ((), alter (Just . maybe [c] (<> [c])) l s))
 
 popCloserResult :: Int -> Char -> ParsecT Text () (State CloserResults) ()
 popCloserResult l c =
-  state
-    (\s -> ((), alter (Just . maybe "ERROR" (reverse . delete c . reverse)) l s))
+  state (\s -> ((), alter (Just . maybe "ERROR" (removeLast c)) l s))
+
+removeLast :: Char -> [Char] -> [Char]
+removeLast c = reverse . delete c . reverse
 
 scoreResults :: Results -> Int
 scoreResults =
@@ -69,10 +71,11 @@ incompleteLineParser = void $ foldParsers (mkParser <$> toList openers)
     allParsers = foldParsers $ mkParser <$> toList openers
     mkParser :: Char -> ParsecT Text () (State CloserResults) ()
     mkParser c = do
+      let closer = closerFor c
       line <- sourceLine <$> getPosition
-      char c >> addCloserResult line c
-      void (many allParsers)
-      (void (char $ closerFor c) >> popCloserResult line c) <|> pure ()
+      char c >> addCloserResult line closer
+      many allParsers
+      try (char closer >> popCloserResult line closer) <|> void newline <|> eof
 
 corruptLineParser :: ParsecT Text () (State Results) ()
 corruptLineParser = void $ foldParsers (mkParser <$> toList openers)
@@ -82,7 +85,7 @@ corruptLineParser = void $ foldParsers (mkParser <$> toList openers)
     mkParser :: Char -> ParsecT Text () (State Results) ()
     mkParser c = do
       char c
-      eof <|> void (many allParsers)
+      eof <|> void (many1 allParsers)
       eof <|> void (char (closerFor c)) <|>
         (do c <- noneOf "\n"
             _ <- addResult c
@@ -93,7 +96,7 @@ inputParser :: ParsecT Text () (State s) () -> ParsecT Text () (State s) ()
 inputParser lineParser =
   void $ do
     _ <- lineParser
-    _ <- (try newline >> inputParser lineParser) <|> eof
+    _ <- eof <|> inputParser lineParser
     pure ()
 
 partOne :: Text -> Text
@@ -106,9 +109,7 @@ partOne input =
 partTwo :: Text -> Text
 partTwo input =
   show $
-  snd $
-  flip runState mempty $
-  runPT (inputParser incompleteLineParser) () "Input" input
+  flip runState mempty $ runPT (many incompleteLineParser) () "Input" input
 
 partOneSampleSolution :: Solution
 partOneSampleSolution =
