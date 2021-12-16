@@ -28,6 +28,7 @@ dependencies:
 - ordered-containers
 - hashable
 - split
+- bytestring
 
 library:
   source-dirs: src
