@@ -32,7 +32,12 @@ data Group =
   deriving (Show)
 
 resolveGroups :: [(Int, Int)] -> [Group]
-resolveGroups = join . map resolveGroup . toGroups
+resolveGroups = resolveGroups' [] . toGroups
+
+resolveGroups' :: [[Group]] -> [Group] -> [Group]
+resolveGroups' all (curGroup:nextGroups) =
+  resolveGroups' (resolveGroup curGroup : all) nextGroups
+resolveGroups' all [] = join all
 
 resolveGroup :: Group -> [Group]
 resolveGroup g =
@@ -41,7 +46,7 @@ resolveGroup g =
       fishCount = fishCount' g
       (spawns, _) = (dayCount - fishVal) `quotRem` 7
       next = (\v -> Group (dayCount - (7 * v)) 6 fishCount) <$> [1 .. spawns]
-   in g : (next >>= resolveGroup)
+   in next
 
 toGroups :: [(Int, Int)] -> [Group]
 toGroups vals =
