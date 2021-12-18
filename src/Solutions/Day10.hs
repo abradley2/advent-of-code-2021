@@ -10,7 +10,7 @@ module Solutions.Day10 where
 import           Data.Foldable
 import           Data.HashMap.Lazy  (HashMap, alter, elems)
 import qualified Data.HashMap.Lazy  as HashMap (delete, toList)
-import           Data.List          (delete)
+import           Data.List          (delete, (!!))
 import           Data.Text          (pack)
 import           Relude             hiding (many, (<|>))
 import           Solutions.Evaluate (Label (..), Solution, evaluateText)
@@ -82,7 +82,9 @@ incompleteLineParser = void $ foldParsers (mkParser <$> toList openers)
       let closer = closerFor c
       char c >> addCloserResult closer
       many allParsers
-      try (char closer >> popCloserResult closer) <|> void eof
+      try
+        ((char closer >> popCloserResult closer) >> (try allParsers <|> pure ())) <|>
+        eof
 
 corruptLineParser :: ParsecT Text () (State Results) ()
 corruptLineParser = void $ foldParsers (mkParser <$> toList openers)
@@ -116,6 +118,7 @@ partOne input =
 partTwo :: Text -> Text
 partTwo input =
   let lines =
+        getMiddle .
         map (scorePartTwo . reverse . snd) .
         filter (\(res, _) -> isRight res) .
         map
@@ -145,3 +148,10 @@ partTwoSampleSolution =
     partTwo
     (Label "Part Two Sample")
     "src/Solutions/Day10/sample_input.txt"
+
+partTwoSolution :: Solution
+partTwoSolution =
+  evaluateText partTwo (Label "Part Two") "src/Solutions/Day10/input.txt"
+
+getMiddle :: Ord a => [a] -> a
+getMiddle l = sort l !! fst (quotRem (length l) 2)

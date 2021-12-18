@@ -6,7 +6,8 @@
 module Solutions.Day6 where
 
 import           Data.Foldable      (toList)
-import           Data.HashMap.Lazy  (HashMap, insert, keys, lookup)
+import           Data.HashMap.Lazy  (HashMap, alter, elems, insert, keys,
+                                     lookup)
 import qualified Data.HashMap.Lazy  as HashMap
 import           Data.Hashable
 import           Data.List          ((!!))
@@ -22,33 +23,43 @@ import           Text.Read          (readMaybe)
 
 type Input = [Int]
 
-type Cache = HashMap (Int, Int) [Int]
+data Group =
+  Group
+    { dayCount'  :: Int
+    , fishVal'   :: Int
+    , fishCount' :: Int
+    }
+  deriving (Show)
+
+resolveGroups :: [(Int, Int)] -> [Group]
+resolveGroups = join . map resolveGroup . toGroups
+
+resolveGroup :: Group -> [Group]
+resolveGroup g =
+  let dayCount = dayCount' g
+      fishVal = fishVal' g
+      fishCount = fishCount' g
+      (spawns, _) = (dayCount - fishVal) `quotRem` 7
+      next = (\v -> Group (dayCount - (7 * v)) 6 fishCount) <$> [1 .. spawns]
+   in g : (next >>= resolveGroup)
+
+toGroups :: [(Int, Int)] -> [Group]
+toGroups vals =
+  (\((dayCount, fishVal), fishCount) -> Group dayCount fishVal fishCount) <$>
+  HashMap.toList (groupCounts vals)
+  where
+    groupCounts :: [(Int, Int)] -> HashMap (Int, Int) Int
+    groupCounts [] = mempty
+    groupCounts ((dayCount, value):xs) =
+      alter (Just . maybe 1 (+ 1)) (dayCount, value) (groupCounts xs)
 
 partOne :: Int -> Input -> Int
 partOne dayCount input = length $ simulateDays dayCount input
 
-elapsable :: Int -> Int -> Int
-elapsable duration curVal
-  | duration > curVal = curVal
-  | otherwise = duration
-
-partTwo :: Int -> Cache -> Int -> [Int] -> Text
-partTwo count cache 0 input = show $ keys cache
--- partTwo cache 0 input = getSum . fold $ Sum . length <$> input
-partTwo count cache dayCount input =
-  let elapsed = elapsable 44 dayCount
-      (nextCache, nextResults) =
-        foldr
-          (\fish (cache', fishes) ->
-             let nextFishes =
-                   fromMaybe
-                     (simulateDays elapsed [fish])
-                     (lookup (elapsed, fish) cache')
-              in ( insert (elapsed, fish) nextFishes cache'
-                 , nextFishes <> fishes))
-          (cache, [])
-          input
-   in partTwo count nextCache (dayCount - elapsed) nextResults
+partTwo :: Int -> [Int] -> Text
+partTwo days input =
+  show . getSum . fold $
+  map (\v -> Sum $ fishCount' v) . resolveGroups $ (days, ) <$> input
 
 simulateDays :: Int -> [Int] -> [Int]
 simulateDays 0 input = input
@@ -83,7 +94,7 @@ partTwoSampleSolution :: Solution
 partTwoSampleSolution =
   evaluate
     inputParser
-    (partTwo 0 mempty 80)
+    (partTwo 80)
     (Label "Part Two Sample")
     "src/Solutions/Day6/sample_input.txt"
 
@@ -91,7 +102,7 @@ partTwoSolution :: Solution
 partTwoSolution =
   evaluate
     inputParser
-    (partTwo 0 mempty 264)
+    (partTwo 264)
     (Label "Part Two")
     "src/Solutions/Day6/sample_input.txt"
 
